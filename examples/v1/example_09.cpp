@@ -6,7 +6,14 @@
 #include <iostream>
 #include <skyr/url.hpp>
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_example_v1_09_main(void)
+#endif
+
+int main(void)
+{
   auto url = skyr::url("https://example.org/");
   url.search_parameters().append(
       "q", "\xf0\x9f\x8f\xb3\xef\xb8\x8f\xe2\x80\x8d\xf0\x9f\x8c\x88");

@@ -11,7 +11,14 @@
 
 using namespace std::string_view_literals;
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_test_v2_host_parsing_main(void)
+#endif
+
+int main(void)
+{
   const auto host_strings = std::vector<std::string_view>{
       "example.com"sv,
       "192.168.0.1"sv,

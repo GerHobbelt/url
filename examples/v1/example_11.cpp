@@ -9,7 +9,14 @@
 
 using namespace std::string_view_literals;
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_example_v1_11_main(void)
+#endif
+
+int main(void)
+{
   auto host_domain = skyr::parse_host("example.com"sv);
   std::cout << host_domain.value().serialize() << std::endl;
 

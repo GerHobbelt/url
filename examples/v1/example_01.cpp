@@ -6,7 +6,14 @@
 #include <iostream>
 #include <skyr/url.hpp>
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_example_v1_01_main(void)
+#endif
+
+int main(void)
+{
   auto url = skyr::url("http://example.org/\xf0\x9f\x92\xa9");
   std::cout << url << std::endl;
   std::cout << url.pathname() << std::endl;

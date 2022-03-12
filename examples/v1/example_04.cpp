@@ -7,7 +7,14 @@
 #include <skyr/core/parse.hpp>
 #include <skyr/core/serialize.hpp>
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_example_v1_04_main(void)
+#endif
+
+int main(void)
+{
   auto base = skyr::parse("https://example.org/");
   auto url = skyr::parse(
       "\xf0\x9f\x8f\xb3\xef\xb8\x8f\xe2\x80\x8d\xf0\x9f\x8c\x88", base.value());

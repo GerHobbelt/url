@@ -6,7 +6,14 @@
 #include <iostream>
 #include <skyr/url.hpp>
 
-int main() {
+
+
+#if defined(BUILD_MONOLITHIC)
+#define main(void)      url_example_v1_02_main(void)
+#endif
+
+int main(void)
+{
   auto url = skyr::make_url("\xf0\x9f\x8d\xa3\xf0\x9f\x8d\xba");
   if (!url) {
     std::cerr << "Parsing failed: " << static_cast<int>(url.error()) << std::endl;
