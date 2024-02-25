@@ -1,194 +1,147 @@
-# Copyright (c) Glyn Matthews 2012-2021.
-# Distributed under the Boost Software License, Version 1.0.
-# (See accompanying file LICENSE_1_0.txt or copy at
-# http://www.boost.org/LICENSE_1_0.txt)
+#
+# Copyright (c) 2019 Vinnie Falco (vinnie.falco@gmail.com)
+# Copyright (c) 2021 DMitry Arkhipov (grisumbras@gmail.com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Official repository: https://github.com/boostorg/url
+#
+
+cmake_minimum_required(VERSION 3.8...3.16)
+
+set(BOOST_URL_VERSION 2)
+if(BOOST_SUPERPROJECT_VERSION)
+    set(BOOST_URL_VERSION ${BOOST_SUPERPROJECT_VERSION})
+endif()
+
+project(boost_url VERSION "${BOOST_URL_VERSION}" LANGUAGES CXX)
 
 
-cmake_minimum_required(VERSION 3.16)
+set(BOOST_URL_IS_ROOT OFF)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(BOOST_URL_IS_ROOT ON)
+endif()
 
-project(
-        skyr-url
-        VERSION 2.0.0
-        HOMEPAGE_URL https://cpp-netlib.github.io/url
-        DESCRIPTION "A C++ library that implements the WhatWG URL specification"
-        LANGUAGES CXX
+if(BOOST_URL_IS_ROOT)
+    include(CTest)
+endif()
+
+if(NOT BOOST_SUPERPROJECT_VERSION)
+    option(BOOST_URL_INSTALL "Install boost::url files" ${BOOST_URL_IS_ROOT})
+    option(BOOST_URL_BUILD_TESTS "Build boost::url tests" ${BUILD_TESTING})
+    option(BOOST_URL_BUILD_EXAMPLES "Build boost::url examples" ${BOOST_URL_IS_ROOT})
+else()
+    set(BOOST_URL_BUILD_TESTS ${BUILD_TESTING})
+endif()
+
+if (BOOST_SUPERPROJECT_VERSION)
+    set(BOOST_URL_FIND_PACKAGE_BOOST OFF)
+elseif (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../CMakeLists.txt" AND
+        EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../Jamroot" AND
+        EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../boost-build.jam" AND
+        EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../bootstrap.sh" AND
+        EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../libs")
+    set(BOOST_URL_FIND_PACKAGE_BOOST OFF)
+else()
+    set(BOOST_URL_FIND_PACKAGE_BOOST ON)
+endif()
+
+if (BOOST_URL_FIND_PACKAGE_BOOST)
+    find_package(Boost 1.78.0 REQUIRED COMPONENTS container)
+elseif (BOOST_URL_IS_ROOT)
+    set(BOOST_URL_UNIT_TEST_LIBRARIES container filesystem unordered json regex)
+    set(BOOST_INCLUDE_LIBRARIES url json ${BOOST_URL_UNIT_TEST_LIBRARIES})
+    set(BOOST_EXCLUDE_LIBRARIES url)
+    set(CMAKE_FOLDER Dependencies)
+    add_subdirectory(../.. Dependencies/boost EXCLUDE_FROM_ALL)
+    unset(CMAKE_FOLDER)
+endif()
+
+include(GNUInstallDirs)
+function(boost_url_setup_properties target)
+    target_compile_features(${target} PUBLIC cxx_constexpr)
+    target_compile_definitions(${target} PUBLIC BOOST_URL_NO_LIB=1)
+
+    if(BOOST_SUPERPROJECT_VERSION)
+        target_include_directories(${target} PUBLIC "${PROJECT_SOURCE_DIR}/include")
+    else()
+        target_include_directories(${target}
+            PUBLIC
+                "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+                "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+        )
+    endif()
+
+    if (BOOST_URL_FIND_PACKAGE_BOOST)
+        target_link_libraries(${target}
+                PUBLIC
+                Boost::headers
+                )
+    else()
+        target_link_libraries(${target}
+            PUBLIC
+                Boost::align
+                Boost::assert
+                Boost::config
+                Boost::core
+                Boost::mp11
+                Boost::optional
+                Boost::static_assert
+                Boost::system
+                Boost::throw_exception
+                Boost::type_traits
+                Boost::variant2
+        )
+    endif()
+endfunction()
+
+
+file(GLOB_RECURSE BOOST_URL_HEADERS CONFIGURE_DEPENDS
+    include/boost/*.hpp
+    include/boost/*.ipp
+    include/boost/*.natvis
 )
 
-if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-    set(skyr_IS_TOP_LEVEL_PROJECT YES)
+set(BOOST_URL_SOURCES src/src.cpp)
+
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/include/boost PREFIX "" FILES ${BOOST_URL_HEADERS})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}/src PREFIX "" FILES ${BOOST_URL_SOURCES})
+
+
+add_library(boost_url ${BOOST_URL_HEADERS} ${BOOST_URL_SOURCES})
+add_library(Boost::url ALIAS boost_url)
+boost_url_setup_properties(boost_url)
+
+if(BUILD_SHARED_LIBS)
+    target_compile_definitions(boost_url PUBLIC BOOST_URL_DYN_LINK=1)
 else()
-    set(skyr_IS_TOP_LEVEL_PROJECT NO)
+    target_compile_definitions(boost_url PUBLIC BOOST_URL_STATIC_LINK=1)
 endif()
 
-option(skyr_BUILD_TESTS "Build the URL tests." ON)
-option(skyr_BUILD_DOCS "Build the URL documentation." OFF)
-option(skyr_BUILD_EXAMPLES "Build the URL examples." OFF)
-option(skyr_FULL_WARNINGS "Build the library with all warnings turned on." ON)
-option(skyr_WARNINGS_AS_ERRORS "Treat warnings as errors." ON)
-option(skyr_BUILD_WITHOUT_EXCEPTIONS "Build without exceptions." OFF)
-option(skyr_BUILD_WITHOUT_RTTI "Build without RTTI." OFF)
-option(skyr_USE_STATIC_CRT "Use static C Runtime library (/MT or MTd)." ON)
-option(skyr_BUILD_WITH_LLVM_LIBCXX "Instruct Clang to use LLVM's implementation of C++ standard library" OFF)
-option(skyr_ENABLE_FILESYSTEM_FUNCTIONS "Enable functions to convert URL to std::filesystem::path" ON)
-option(skyr_ENABLE_JSON_FUNCTIONS "Enable functions to convert URL components to JSON" ON)
-option(skyr_BUILD_V1 "Build v1" ON)
-option(skyr_BUILD_V2 "Build v2, which uses C++20 features" OFF)
 
-if (skyr_IS_TOP_LEVEL_PROJECT)
-    set(CMAKE_VERBOSE_MAKEFILE true)
-    set(CMAKE_CXX_STANDARD 17)
-    if (skyr_BUILD_V2)
-        set(CMAKE_CXX_STANDARD 20)
-    endif()
-    set(CMAKE_CXX_EXTENSIONS OFF)
-    set(CMAKE_CXX_STANDARD_REQUIRED ON)
-endif()
-
-find_package(tl-expected CONFIG REQUIRED)
-find_package(range-v3 CONFIG REQUIRED)
-
-if (skyr_ENABLE_JSON_FUNCTIONS)
-    find_package(nlohmann_json CONFIG REQUIRED)
-endif()
-
-if (skyr_USE_STATIC_CRT AND ${CMAKE_CXX_COMPILER_ID} MATCHES MSVC)
-    include(${PROJECT_SOURCE_DIR}/cmake/skyr-url-functions.cmake)
-    skyr_replace_dynamic_msvcrt_linker_flags()
-endif()
-
-set(full_warnings $<BOOL:${skyr_FULL_WARNINGS}>)
-set(warnings_as_errors $<BOOL:${skyr_WARNINGS_AS_ERRORS}>)
-set(no_exceptions $<BOOL:${skyr_BUILD_WITHOUT_EXCEPTIONS}>)
-set(no_rtti $<BOOL:${skyr_BUILD_WITHOUT_RTTI}>)
-
-set(gnu $<CXX_COMPILER_ID:GNU>)
-set(clang $<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>)
-set(libcxx $<AND:${clang},$<BOOL:${skyr_BUILD_WITH_LLVM_LIBCXX}>>)
-set(clang_with_gnu_stdlib $<AND:$<CXX_COMPILER_ID:Clang>,$<NOT:$<BOOL:${WIN32}>>,$<NOT:$<BOOL:${skyr_BUILD_WITH_LLVM_LIBCXX}>>>)
-set(msvc $<CXX_COMPILER_ID:MSVC>)
-
-add_subdirectory(src)
-
-# Testing
-if (skyr_BUILD_TESTS)
-    message(STATUS "Configuring tests")
-    enable_testing()
-    add_subdirectory(tests)
-endif()
-
-# Documentation
-if (skyr_BUILD_DOCS)
-    message(STATUS "Configuring documentation")
-    add_subdirectory(docs)
-endif()
-
-# Examples
-if (skyr_BUILD_EXAMPLES)
-    message(STATUS "Configuring examples")
-    add_subdirectory(examples)
-endif()
-
-if (skyr_BUILD_V1)
-    # Add an alias for projects that use skyr-url as a dependency
-    if (NOT CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
-        add_library(skyr::skyr-url ALIAS skyr-url-v1)
-        add_library(skyr::url ALIAS skyr-url-v1)
-        if (skyr_ENABLE_FILESYSTEM_FUNCTIONS)
-            add_library(skyr::skyr-filesystem ALIAS skyr-filesystem-v1)
-            add_library(skyr::filesystem ALIAS skyr-filesystem-v1)
-        endif()
-        if (skyr_ENABLE_JSON_FUNCTIONS)
-            add_library(skyr::skyr-json ALIAS skyr-json-v1)
-            add_library(skyr::json ALIAS skyr-json-v1)
-        endif()
-    endif()
-
-    ## Install
-    include(CMakePackageConfigHelpers)
-    include(GNUInstallDirs)
-
-    configure_package_config_file(
-            "${PROJECT_SOURCE_DIR}/cmake/${PROJECT_NAME}-config.cmake.in"
-            "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
-            INSTALL_DESTINATION "share/cmake/${PROJECT_NAME}")
-
-    write_basic_package_version_file(
-            "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
-            COMPATIBILITY SameMajorVersion
-            ARCH_INDEPENDENT)
-
-    set(skyr_TARGETS skyr-url-v1)
-    if (skyr_ENABLE_FILESYSTEM_FUNCTIONS)
-        list(APPEND skyr_TARGETS skyr-filesystem-v1)
-    endif()
-    if (skyr_ENABLE_JSON_FUNCTIONS)
-        list(APPEND skyr_TARGETS skyr-json-v1)
-    endif()
-
-    install(TARGETS ${skyr_TARGETS}
-            EXPORT ${PROJECT_NAME}-targets
-            INCLUDES DESTINATION "${CMAKE_INSTALL_DATADIR}"
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-
-    install(EXPORT ${PROJECT_NAME}-targets
-            DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/${PROJECT_NAME}"
-            NAMESPACE skyr::
-            FILE "${PROJECT_NAME}-targets.cmake")
-
-    install(FILES
-            "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
-            "${PROJECT_BINARY_DIR}/${PROJECT_NAME}-config.cmake"
-            DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/${PROJECT_NAME}")
-
-    install(
-            DIRECTORY
-            "${PROJECT_SOURCE_DIR}/include/skyr/core"
-            "${PROJECT_SOURCE_DIR}/include/skyr/domain"
-            "${PROJECT_SOURCE_DIR}/include/skyr/network"
-            "${PROJECT_SOURCE_DIR}/include/skyr/percent_encoding"
-            DESTINATION
-            include/skyr
+if(BOOST_URL_INSTALL AND NOT BOOST_SUPERPROJECT_VERSION)
+    install(TARGETS boost_url
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
 
-    install(
-            DIRECTORY
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/core"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/domain"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/network"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/percent_encoding"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/platform"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/string"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/traits"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/unicode"
-            DESTINATION
-            include/skyr/v1
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/boost
+            DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+            FILES_MATCHING
+                PATTERN "*.hpp"
+                PATTERN "*.ipp"
     )
+endif()
 
-    install(
-            FILES
-            "${PROJECT_BINARY_DIR}/include/skyr/version.hpp"
-            "${PROJECT_SOURCE_DIR}/include/skyr/config.hpp"
-            "${PROJECT_SOURCE_DIR}/include/skyr/url.hpp"
-            DESTINATION
-            include/skyr
-    )
 
-    install(
-            FILES
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/url.hpp"
-            "${PROJECT_SOURCE_DIR}/include/skyr/v1/url_search_parameters.hpp"
-            DESTINATION
-            include/skyr/v1
-    )
+if(BOOST_URL_BUILD_TESTS)
+    add_subdirectory(test)
+endif()
 
-    if (skyr_ENABLE_FILESYSTEM_FUNCTIONS)
-        install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/skyr/filesystem" DESTINATION include/skyr)
-        install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/skyr/v1/filesystem" DESTINATION include/skyr/v1)
-    endif()
-
-    if (skyr_ENABLE_JSON_FUNCTIONS)
-        install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/skyr/json" DESTINATION include/skyr)
-        install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/skyr/v1/json" DESTINATION include/skyr/v1)
-    endif()
+if(BOOST_URL_BUILD_EXAMPLES)
+    add_subdirectory(example)
 endif()

@@ -1,230 +1,140 @@
-# Skyr URL
+[![Boost.URL](https://raw.githubusercontent.com/vinniefalco/url/master/doc/images/repo-logo.png)](http://master.url.cpp.al/)
 
-## Status
+Branch          | [`master`](https://github.com/boostorg/url/tree/master)                                                                                             | [`develop`](https://github.com/boostorg/url/tree/develop) |
+--------------- |-----------------------------------------------------------------------------------------------------------------------------------------------------| ------------------------------------------------------------- |
+Docs            | [![Documentation](https://img.shields.io/badge/docs-master-brightgreen.svg)](http://master.url.cpp.al/)                                             | [![Documentation](https://img.shields.io/badge/docs-develop-brightgreen.svg)](http://develop.url.cpp.al/)
+[Drone](https://drone.io/) | [![Build Status](https://drone.cpp.al/api/badges/boostorg/url/status.svg?ref=refs/heads/master)](https://drone.cpp.al/boostorg/url)                 | [![Build Status](https://drone.cpp.al/api/badges/boostorg/url/status.svg?ref=refs/heads/develop)](https://drone.cpp.al/boostorg/url)
+[GitHub Actions](https://github.com/) | [![CI](https://github.com/boostorg/url/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/boostorg/url/actions/workflows/ci.yml) | [![CI](https://github.com/boostorg/url/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/boostorg/url/actions/workflows/ci.yml)
+[codecov.io](https://codecov.io) | [![codecov](https://codecov.io/gh/boostorg/url/branch/master/graph/badge.svg)](https://codecov.io/gh/boostorg/url/branch/master)                    | [![codecov](https://codecov.io/gh/boostorg/url/branch/develop/graph/badge.svg)](https://codecov.io/gh/boostorg/url/branch/develop)
+Matrix          | [![Matrix](https://img.shields.io/badge/matrix-master-brightgreen.svg)](http://www.boost.org/development/tests/master/developer/url.html)           | [![Matrix](https://img.shields.io/badge/matrix-develop-brightgreen.svg)](http://www.boost.org/development/tests/develop/developer/url.html)
 
-[![License](
-    https://img.shields.io/badge/license-boost-blue.svg "License")](
-    https://github.com/cpp-netlib/url/blob/master/LICENSE_1_0.txt)
-[![GitHub Actions Status](
-    https://github.com/cpp-netlib/url/workflows/skyr-url%20CI/badge.svg?branch=main)](
-    https://github.com/cpp-netlib/url/actions?query=workflow%3A%22skyr-url+CI%22)
-    
-## Notice
+# Boost.URL
 
-I've changed the name of the default branch from `master` to `main`. Please make future
-PRs to the `main` branch on the [cpp-netlib repo](https://github.com/cpp-netlib/url).
+## Overview
 
-## Introduction
+Boost.URL is a portable C++ library which provides containers and algorithms
+which model a "URL", more formally described using the Uniform Resource
+Identifier (URI) specification (henceforth referred to as rfc3986). A URL
+is a compact sequence of characters that identifies an abstract or physical
+resource. For example, this is a valid URL which satisfies the
+absolute-URI grammar:
 
-This library provides:
-
-* A ``skyr::url`` class that implements a generic URL parser,
-  conforming with the [WhatWG URL specification](https://url.spec.whatwg.org/#url-class)
-* URL serialization and comparison
-* Percent encoding and decoding functions
-* IDNA and Punycode functions for domain name parsing
-* Basic Unicode conversion functions
-
-## Using the library
-
-This project requires the availability of a C++17 compliant compiler
-and standard library.
-
-### ``vcpkg``
-
-``skyr::url`` is available on [``vcpkg``](https://github.com/microsoft/vcpkg).
-It can be installed by executing the following steps:
-
-```bash
-> cd ${VCPKG_ROOT}
-> git init
-> git remote add origin https://github.com/Microsoft/vcpkg.git
-> git fetch origin master
-> git checkout -b master origin/master
-> ./bootstrap-vcpkg.sh
-> ./vcpkg install skyr-url
+```
+https://www.example.com/path/to/file.txt?userid=1001&page=2&results=full
 ```
 
-On Windows - for example, using Powershell - replace the
-call to ``bootstrap-vcpkg.sh`` with ``bootstrap-vcpkg.bat``.
+This library understands the various grammars related to URLs and provides
+for validating and parsing of strings, manipulation of URL strings, and
+algorithms operating on URLs such as normalization and resolution. While
+the library is general purpose, special care has been taken to ensure that
+the implementation and data representation are friendly to network programs
+which need to handle URLs efficiently and securely, including the case where
+the inputs come from untrusted sources. Interfaces are provided for using
+error codes instead of exceptions as needed, and all algorithms provide a
+mechanism for avoiding memory allocations entirely if desired. Another
+feature of the library is that all container mutations leave the URL in
+a valid state. Code which uses Boost.URL will be easy to read, flexible,
+and performant.
 
-## Building the project from source
+Network programs such as those using Boost.Asio or Boost.Beast often
+encounter the need to process, generate, or modify URLs. This library
+provides a very much needed modular component for handling these
+use-cases.
 
-### Installing dependencies using `vcpkg`
+## Example
+```cpp
+using namespace boost::urls;
 
-Using `vcpkg`, install the library dependencies:
+// Parse a URL. This allocates no memory. The view
+// references the character buffer without taking ownership.
+//
+url_view uv( "https://www.example.com/path/to/file.txt?id=1001&name=John%20Doe&results=full" );
 
-```bash
-> cd ${VCPKG_ROOT}
-> git init
-> git remote add origin https://github.com/Microsoft/vcpkg.git
-> git fetch origin master
-> git checkout -b master origin/master
-> ./bootstrap-vcpkg.sh
-> ./vcpkg install tl-expected range-v3 catch2 nlohmann-json fmt
+// Print the query parameters with percent-decoding applied
+//
+for( auto v : uv.params() )
+    std::cout << v.key << "=" << v.value << " ";
+
+// Prints: id=1001 name=John Doe results=full
+
+// Create a modifiable copy of `uv`, with ownership of the buffer
+//
+url u = uv;
+
+// Change some elements in the URL
+//
+u.set_scheme( "http" )
+ .set_encoded_host( "boost.org" )
+ .set_encoded_path( "/index.htm" )
+ .remove_query()
+ .remove_fragment()
+ .params().append( "key", "value" );
+
+std::cout << u;
+
+// Prints: http://boost.org/index.htm?key=value
 ```
 
-### Building the project with `CMake` and `Ninja`
+## Design Goals
 
-From a terminal, execute the following sequence of commands:
+The library achieves these goals:
 
-```bash
-> mkdir _build
-> cmake \
-    -B _build \
-    -G "Ninja" \
-    -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    .
-> cmake --build _build
+* Require only C++11
+* Works without exceptions
+* Fast compilation, no templates
+* Strict compliance with rfc3986
+* Allocate memory or use inline storage
+* Optional header-only, without linking to a library
+
+## Requirements
+
+* Requires Boost and a compiler supporting at least C++11
+* Aliases for standard types use their Boost equivalents
+* Link to a built static or dynamic Boost library, or use header-only (see below)
+* Supports -fno-exceptions, detected automatically
+
+### Header-Only
+
+To use as header-only; that is, to eliminate the requirement to
+link a program to a static or dynamic Boost.URL library, simply
+place the following line in exactly one new or existing source
+file in your project.
+```cpp
+#include <boost/url/src.hpp>
 ```
 
-To run the tests:
+### Embedded
 
-```bash
-> cmake --build _build --target test
-```
+Boost.URL works great on embedded devices. It can be used in a way
+that avoids all dynamic memory allocations. Furthermore it is designed 
+to work without exceptions if desired.
 
-On Windows, replace the target with ``RUN_TESTS``:
+### Supported Compilers
 
-```powershell
-> cmake --build _build --target RUN_TESTS
-```
+Boost.URL is tested with the following compilers:
 
-To install the library:
+* clang: 3.8, 4, 5, 6, 7, 8, 9, 10, 11, 12
+* gcc: 4.8, 4.9, 5, 6, 7, 8, 9, 10, 11
+* msvc: 14.0, 14.1, 14.2, 14.3
 
-```bash
-> cmake --build _build --target install
-```
+and these architectures: x86, x64, ARM64, S390x
 
-## Testing and installing the project
+### Quality Assurance
 
-### Installing with `CMake` and `Ninja`
+The development infrastructure for the library includes
+these per-commit analyses:
 
-```bash
-> cmake .. \
-    -G "Ninja" \
-    -DCMAKE_TOOLCHAIN_FILE=${VCPKG_ROOT}/vcpkg/scripts/buildsystems/vcpkg.cmake \
-    -DCMAKE_INSTALL_PREFIX=$PREFIX
-> ninja
-> ninja test
-> ninja install
-```
+* Coverage reports
+* Benchmark performance comparisons
+* Compilation and tests on Drone.io
 
-Where `$PREFIX` is the location where you want to install the
-library. Depending on the location of `$PREFIX`, you may need to run
-the install command as an administrator (e.g. on Linux as `sudo`).
+## Visual Studio Solution Generation
 
-
-## Example usage
-
-### Source code
-
-Here is an example of how to use the ``skyr::url`` class to parse a
-URL string and to process the components:
-
-```c++
-// url_parts.cpp
-
-#include <skyr/url.hpp>
-#include <skyr/percent_encoding/percent_decode.hpp>
-#include <iostream>
-
-int main() {
-  using namespace skyr::literals;
-
-  auto url =
-      "http://sub.example.إختبار:8090/\xcf\x80?a=1&c=2&b=\xe2\x80\x8d\xf0\x9f\x8c\x88"_url;
-
-  std::cout << "Protocol: " << url.protocol() << std::endl;
-
-  std::cout << "Domain?   " << std::boolalpha << url.is_domain() << std::endl;
-  std::cout << "Domain:   " << url.hostname() << std::endl;
-  std::cout << "Domain:   " << url.u8domain().value() << std::endl;
-
-  std::cout << "Port:     " << url.port<std::uint16_t>().value() << std::endl;
-
-  std::cout << "Pathname: "
-            << skyr::percent_decode(url.pathname()).value() << std::endl;
-
-  std::cout << "Search parameters:" << std::endl;
-  const auto &search = url.search_parameters();
-  for (const auto &[key, value] : search) {
-    std::cout << "  " << "key: " << key << ", value = " << value << std::endl;
-  }
-}
-```
-
-### Build script
-
-Here is the ``CMake`` script to build the example:
-
-```cmake
-# CMakeLists.txt
-
-cmake_minimum_required(VERSION 3.16)
-
-project(my_project)
-
-find_package(tl-expected CONFIG REQUIRED)
-find_package(range-v3 CONFIG REQUIRED)
-find_package(skyr-url CONFIG REQUIRED)
-
-set(CMAKE_CXX_STANDARD 17)
-
-add_executable(url_parts url_parts.cpp)
-target_link_libraries(url_parts PRIVATE skyr::skyr-url)
-```
-
-### Output
-
-The output of this program is:
-
-```bash
-Protocol: http:
-Domain?   true
-Domain:   sub.example.xn--kgbechtv
-Domain:   sub.example.إختبار
-Port:     8090
-Pathname: /π
-Search parameters:
-  key: a, value = 1
-  key: c, value = 2
-  key: b, value = ‍🌈
-```
-
-## Dependencies
-
-This library uses [expected](https://github.com/TartanLlama/expected)
-and [Range v3](https://github.com/ericniebler/range-v3).
-
-The tests use [Catch2](https://github.com/catchorg/catch2),
-[nlohmann-json](https://github.com/nlohmann/json) and
-[fmtlib](https://github.com/fmtlib/fmt).
-
-## Acknowledgements
-
-This library includes a modified implementation of [utfcpp](https://github.com/nemtrif/utfcpp).
-
-## Platform support
-
-Look at the [GitHub Actions Status](https://github.com/cpp-netlib/url/actions)
-for all of the configurations for which this library is tested.
+    cmake -G "Visual Studio 16 2019" -A Win32 -B bin -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/msvc.cmake
+    cmake -G "Visual Studio 16 2019" -A x64 -B bin64 -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/msvc.cmake
 
 ## License
 
-This library is released under the Boost Software License (please see
-http://boost.org/LICENSE_1_0.txt or the accompanying [LICENSE_1_0.txt](LICENSE_1_0.txt)
-file for the full text).
-
-## Why *skyr*?
-
-This name was chosen by a random project name generator, which
-itself was randomly chosen.
-
-## Contact
-
-Any questions about this library can be addressed to the cpp-netlib
-[developers mailing list](cpp-netlib@googlegroups.com). Issues can
-be filed on our [GitHub page](http://github.com/cpp-netlib/url/issues).
-
-You can also contact me via Twitter [@glynos](https://twitter.com/glynos).
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file [LICENSE_1_0.txt](LICENSE_1_0.txt) or copy at
+https://www.boost.org/LICENSE_1_0.txt)
