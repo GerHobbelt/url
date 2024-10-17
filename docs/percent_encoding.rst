@@ -24,7 +24,7 @@ Example
    #include <skyr/percent_encoding/percent_decode.hpp>
    #include <iostream>
 
-   int main() {
+   int main(void) {
      using namespace skyr::literals;
 
      auto url = "http://www.example.org/\xcf\x80/"_url;

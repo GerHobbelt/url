@@ -48,7 +48,7 @@ and standard library.
    #include <skyr/percent_encoding/percent_decode.hpp>
    #include <iostream>
 
-   int main() {
+   int main(void) {
      using namespace skyr::literals;
 
      try {

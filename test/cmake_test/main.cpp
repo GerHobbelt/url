@@ -7,7 +7,7 @@
 
 #include <boost/url.hpp>
 
-int main() {
+int main(void) {
   boost::urls::ipv4_address ip_addr({127, 0, 0, 1});
   if (ip_addr.to_bytes().size() != 4) {
     throw;

@@ -27,7 +27,7 @@ Example
    #include <skyr/domain/domain.hpp>
    #include <iostream>
 
-   int main() {
+   int main(void) {
      using namespace std::string_literals;
 
      auto domain = "उदाहरण.परीक्षा"s;

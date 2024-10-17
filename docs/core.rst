@@ -33,7 +33,7 @@ Example
     #include <skyr/core/serialize.hpp>
     #include <iostream>
 
-    int main() {
+    int main(void) {
       auto url = skyr::url_parse("http://example.org/");
       std::cout << url << std::endl;
       std::cout << "Scheme:     " << url.scheme << std::endl;

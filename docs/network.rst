@@ -23,7 +23,7 @@ Example
    #include <iostream>
    #include <cassert>
 
-   int main() {
+   int main(void) {
      using namespace skyr::literals;
 
      auto url = "http://[1080:0:0:0:8:800:200C:417A]:8090/"_url;

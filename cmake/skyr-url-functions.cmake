@@ -26,12 +26,12 @@ endfunction()
 
 function(skyr_check_filesystem compile_definitions)
     check_cxx_source_compiles("#include <filesystem>
-int main() { std::filesystem::path p{}; }" SKYR_USE_CXX17_FILESYSTEM)
+int main(void) { std::filesystem::path p{}; }" SKYR_USE_CXX17_FILESYSTEM)
     if (SKYR_USE_CXX17_FILESYSTEM)
         set(_compile_definitions "-DSKYR_USE_CXX17_FILESYSTEM")
     else()
         check_cxx_source_compiles("#include <experimental/filesystem>
-int main() { std::experimental::filesystem::path p{}; }" SKYR_USE_CXX17_EXPERIMENTAL_FILESYSTEM)
+int main(void) { std::experimental::filesystem::path p{}; }" SKYR_USE_CXX17_EXPERIMENTAL_FILESYSTEM)
         if (SKYR_USE_CXX17_EXPERIMENTAL_FILESYSTEM)
             set(_compile_definitions "-DSKYR_USE_CXX17_EXPERIMENTAL_FILESYSTEM")
             if (${CMAKE_CXX_COMPILER_ID} MATCHES GNU OR ${CMAKE_CXX_COMPILER_ID} MATCHES Clang)

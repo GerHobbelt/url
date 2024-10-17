@@ -23,7 +23,7 @@ Example
    #include <skyr/filesystem/path.hpp>
    #include <iostream>
 
-   int main() {
+   int main(void) {
      auto path = std::filesystem::path("/usr/bin/clang");
      auto url = skyr::filesystem::from_path(path).value();
      std::cout << url << std::endl;

@@ -23,7 +23,7 @@ Example
     #include <skyr/url.hpp>
     #include <iostream>
 
-    int main() {
+    int main(void) {
       using namespace skyr::literals;
 
       try {
